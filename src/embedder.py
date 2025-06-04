@@ -1,5 +1,5 @@
 import torch    # type: ignore
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 from sys import argv
 from sequence_loader import read_unaligned_sequences, extract_sequence_dictionary
 from tqdm import tqdm   # type: ignore
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # Initialize the tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("InstaDeepAI/nucleotide-transformer-500m-human-ref")
-    model = AutoModel.from_pretrained("InstaDeepAI/nucleotide-transformer-500m-human-ref")
+    model = AutoModelForMaskedLM.from_pretrained("InstaDeepAI/nucleotide-transformer-500m-human-ref")
 
     # Move model to GPU
     model = model.to(device)
