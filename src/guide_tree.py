@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModel
 from sys import argv
 from sequence_loader import read_unaligned_sequences, extract_sequence_dictionary
 from tqdm import tqdm   # type: ignore
-
+import os
 
 def embed(sequence, pooling='mean'):
     """
@@ -15,7 +15,7 @@ def embed(sequence, pooling='mean'):
     Returns:
         torch.Tensor: The embedding of the sequence.
     """
-    inputs = tokenizer(sequence, return_tensors='pt')["input_ids"]
+    inputs = tokenizer(sequence, return_tensors='pt')["input_ids"].to(device)
     hidden_states = model(inputs)[0]  # [1, sequence_length, 768]
     
     if pooling == 'mean':
@@ -42,9 +42,16 @@ if __name__ == "__main__":
     print("First sequence name:", next(iter(sequence_dict)))
     print("First sequence data:", sequence_dict[next(iter(sequence_dict))])
 
+    # Get device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+
     # Initialize the tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
     model = AutoModel.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
+
+    # Move model to GPU
+    model = model.to(device)
 
     embeddings = {}
     for name, sequence in tqdm(sequence_dict.items()):
