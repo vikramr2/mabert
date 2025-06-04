@@ -2,7 +2,7 @@ import torch    # type: ignore
 from transformers import AutoTokenizer, AutoModel
 from sys import argv
 from sequence_loader import read_unaligned_sequences, extract_sequence_dictionary
-from tqdm import tqdm
+from tqdm import tqdm   # type: ignore
 
 
 def embed(sequence, pooling='mean'):
