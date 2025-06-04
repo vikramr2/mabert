@@ -3,8 +3,9 @@ from transformers import AutoTokenizer, AutoModel
 from sys import argv
 from sequence_loader import read_unaligned_sequences, extract_sequence_dictionary
 from tqdm import tqdm   # type: ignore
-import os
 import gc
+import os
+import numpy as np
 
 def embed(sequence, pooling='mean'):
     """
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     # Move model to GPU
     model = model.to(device)
 
+    # Compute the embedding dictionary
     embeddings = {}
     for i, (name, sequence) in enumerate(tqdm(sequence_dict.items())):
         with torch.no_grad():  # Disable gradient computation
@@ -64,5 +66,9 @@ if __name__ == "__main__":
         if i % 10 == 0:
             torch.cuda.empty_cache()
             gc.collect()
-    
+
+    # Save embeddings to an npy file
+    os.makedirs('embeddings', exist_ok=True)
+    np.savez('embeddings/embeddings.npz', **embeddings)
+
     print("Embeddings computed for all sequences.")
