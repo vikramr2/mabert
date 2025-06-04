@@ -4,6 +4,7 @@ from sys import argv
 from sequence_loader import read_unaligned_sequences, extract_sequence_dictionary
 from tqdm import tqdm   # type: ignore
 import os
+import gc
 
 def embed(sequence, pooling='mean'):
     """
@@ -47,15 +48,21 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     # Initialize the tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
-    model = AutoModel.from_pretrained("zhihan1996/DNABERT-2-117M", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained("InstaDeepAI/nucleotide-transformer-500m-human-ref")
+    model = AutoModel.from_pretrained("InstaDeepAI/nucleotide-transformer-500m-human-ref")
 
     # Move model to GPU
     model = model.to(device)
 
     embeddings = {}
-    for name, sequence in tqdm(sequence_dict.items()):
-        embedding = embed(sequence, pooling='mean')
-        embeddings[name] = embedding
+    for i, (name, sequence) in enumerate(tqdm(sequence_dict.items())):
+        with torch.no_grad():  # Disable gradient computation
+            embedding = embed(sequence, pooling='mean')
+            embeddings[name] = embedding.cpu()  # Move to CPU immediately
+        
+        # Clear cache every 10 sequences
+        if i % 10 == 0:
+            torch.cuda.empty_cache()
+            gc.collect()
     
     print("Embeddings computed for all sequences.")
