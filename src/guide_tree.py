@@ -7,7 +7,7 @@ import gc
 import os
 import numpy as np
 
-def embed(sequence, pooling='mean'):
+def embed(sequence):
     """
     Embed a DNA sequence using the DNABERT model.
     
@@ -17,17 +17,37 @@ def embed(sequence, pooling='mean'):
     Returns:
         torch.Tensor: The embedding of the sequence.
     """
-    inputs = tokenizer(sequence, return_tensors='pt')["input_ids"].to(device)
-    hidden_states = model(inputs)[0]  # [1, sequence_length, 768]
-    
-    if pooling == 'mean':
-        embedding = torch.mean(hidden_states[0], dim=0)
-    elif pooling == 'max':
-        embedding = torch.max(hidden_states[0], dim=0)[0]
-    else:
-        raise ValueError("Pooling method must be 'mean' or 'max'.")
-    
-    return embedding
+    sequences = [sequence]
+
+    # Tokenize the sequence
+    tokens_ids = tokenizer.batch_encode_plus(
+        sequences, 
+        return_tensors="pt", 
+        padding="max_length", 
+        max_length=tokenizer.model_max_length
+    )["input_ids"]
+
+    # Move tokens to the appropriate device
+    tokens_ids = tokens_ids.to(device)
+
+    # Compute the embeddings
+    attention_mask = tokens_ids != tokenizer.pad_token_id
+    torch_outs = model(
+        tokens_ids,
+        attention_mask=attention_mask,
+        encoder_attention_mask=attention_mask,
+        output_hidden_states=True
+    )
+
+    # Compute sequence embeddings
+    embeddings = torch_outs['hidden_states'][-1].detach()
+
+    # Add embed dimension axis
+    attention_mask = torch.unsqueeze(attention_mask, dim=-1)
+
+    # Compute mean embeddings per sequence
+    mean_sequence_embeddings = torch.sum(attention_mask * embeddings, axis=-2) / torch.sum(attention_mask, axis=1)
+    return mean_sequence_embeddings.squeeze(0)  # Remove the batch dimension
 
 if __name__ == "__main__":
     if len(argv) < 2:
@@ -59,7 +79,7 @@ if __name__ == "__main__":
     embeddings = {}
     for i, (name, sequence) in enumerate(tqdm(sequence_dict.items())):
         with torch.no_grad():  # Disable gradient computation
-            embedding = embed(sequence, pooling='mean')
+            embedding = embed(sequence)
             embeddings[name] = embedding.cpu()  # Move to CPU immediately
         
         # Clear cache every 10 sequences
