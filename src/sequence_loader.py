@@ -1,7 +1,5 @@
 from sys import argv
 
-unaligned_sequence_file = argv[1]
-
 def read_unaligned_sequences(file_path):
     sequences = []
     with open(file_path, 'r') as file:
@@ -38,4 +36,7 @@ def main():
     print("First sequence data:", sequence_dict[next(iter(sequence_dict))])
 
 if __name__ == "__main__":
+    unaligned_sequence_file = argv[1]
+    if not unaligned_sequence_file:
+        raise ValueError("Please provide the path to the unaligned sequence file as a command line argument.")
     main()
