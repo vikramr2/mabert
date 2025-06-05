@@ -52,6 +52,10 @@ def embed(sequence):
 if __name__ == "__main__":
     if len(argv) < 2:
         raise ValueError("Please provide the path to the unaligned sequence file as a command line argument.")
+    if len(argv) == 3:
+        output_file = argv[2]
+    else:
+        output_file = None
     
     unaligned_sequence_file = argv[1]
     sequences = read_unaligned_sequences(unaligned_sequence_file)
@@ -88,7 +92,10 @@ if __name__ == "__main__":
             gc.collect()
 
     # Save embeddings to an npy file
-    os.makedirs('embeddings', exist_ok=True)
-    np.savez('embeddings/embeddings.npz', **embeddings)
+    if not output_file:
+        os.makedirs('embeddings', exist_ok=True)
+        np.savez('embeddings/embeddings.npz', **embeddings)
+    else:
+        np.savez(output_file, **embeddings)
 
     print("Embeddings computed for all sequences.")

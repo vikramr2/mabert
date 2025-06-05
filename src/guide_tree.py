@@ -5,7 +5,7 @@ from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform   # type: ignore
 
 
-def compute_tree(embeddings):
+def compute_tree(embeddings, output_file=None):
     """
     Compute agglomerative clustering tree from embeddings using cosine distance
     and save as MAFFT-compatible guide tree.
@@ -35,7 +35,11 @@ def compute_tree(embeddings):
     tree = to_tree(linkage_matrix, rd=False)
     
     # Generate guide tree in Newick format for MAFFT
-    guide_tree_path = "guide_tree.newick"
+    if not output_file:
+        guide_tree_path = "guide_tree.newick"
+    else:
+        guide_tree_path = output_file
+
     newick_string = tree_to_newick(tree, seq_ids)
     
     with open(guide_tree_path, 'w') as f:
