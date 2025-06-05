@@ -17,6 +17,8 @@ pip install -r requirements.txt
 
 ## Usage
 
+**NOTE**: It's recommended that you run this on a system with an Nvidia GPU with CUDA installed
+
 The use can control what step to start from. Just passing in `-s` with a FASTA dataset of unaligned sequences starts the pipeline from scratch. Alternatively, the user can start from the embedding stage by passing in `-e` pointing to an embeddings `.npz` file. Passing in `-t` starts from an existing guide tree.
 
 ```
