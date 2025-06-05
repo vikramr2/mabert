@@ -1,3 +1,6 @@
+# newicks
+*.newick
+
 # embeddings
 embeddings/
 
