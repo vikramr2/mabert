@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# MAFFT Pipeline Script
-# Usage: ./mafft_pipeline.sh [OPTIONS]
+# MABERT Pipeline Script
+# Usage: ./mabert [OPTIONS]
 # 
 # This script implements a three-stage pipeline:
 # 1. Unaligned sequences -> Embeddings (if sequences provided)
@@ -23,7 +23,7 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-MAFFT Pipeline Script - processes sequences through embeddings and guide tree to final alignment
+MABERT Pipeline Script - processes sequences through embeddings and guide tree to final alignment
 
 OPTIONS:
     -s, --sequences FILE    Path to unaligned sequences file (FASTA format)
@@ -49,9 +49,6 @@ EXAMPLES:
     # Start from tree (only do alignment)
     $0 -t guide_tree.newick -s sequences.fasta -o output.fasta
     
-    # All inputs provided (tree takes precedence)
-    $0 -s seq.fasta -e embed.npz -t tree.newick -o output.fasta
-
 EOF
 }
 
