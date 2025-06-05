@@ -1,0 +1,218 @@
+#!/bin/bash
+
+# MAFFT Pipeline Script
+# Usage: ./mafft_pipeline.sh [OPTIONS]
+# 
+# This script implements a three-stage pipeline:
+# 1. Unaligned sequences -> Embeddings (if sequences provided)
+# 2. Embeddings -> Guide tree (if embeddings provided) 
+# 3. Guide tree + sequences -> Aligned sequences (if tree provided)
+
+set -euo pipefail
+
+# Default values
+SEQUENCES=""
+EMBEDDINGS=""
+TREE=""
+OUTPUT="aligned_sequences.fasta"
+HELP=false
+MAFFT_PATH="./extern/mafft/mafft"  # Path to MAFFT executable
+
+# Function to display usage
+usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+MAFFT Pipeline Script - processes sequences through embeddings and guide tree to final alignment
+
+OPTIONS:
+    -s, --sequences FILE    Path to unaligned sequences file (FASTA format)
+    -e, --embeddings FILE   Path to embeddings file (NPZ format)
+    -t, --tree FILE         Path to guide tree file (Newick format)
+    -o, --output FILE       Output aligned sequences file (default: aligned_sequences.fasta)
+    -h, --help              Show this help message
+
+PRECEDENCE (highest to lowest):
+    1. Guide tree (-t) - if provided, starts alignment directly
+    2. Embeddings (-e) - if provided, starts from tree generation
+    3. Sequences (-s) - if provided, starts from embedding generation
+
+At least one input file must be provided.
+
+EXAMPLES:
+    # Start from sequences (full pipeline)
+    $0 -s sequences.fasta -o output.fasta
+    
+    # Start from embeddings (skip embedding generation)
+    $0 -e embeddings.npz -s sequences.fasta -o output.fasta
+    
+    # Start from tree (only do alignment)
+    $0 -t guide_tree.newick -s sequences.fasta -o output.fasta
+    
+    # All inputs provided (tree takes precedence)
+    $0 -s seq.fasta -e embed.npz -t tree.newick -o output.fasta
+
+EOF
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--sequences)
+            SEQUENCES="$2"
+            shift 2
+            ;;
+        -e|--embeddings)
+            EMBEDDINGS="$2"
+            shift 2
+            ;;
+        -t|--tree)
+            TREE="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            HELP=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Show help if requested
+if [[ "$HELP" == true ]]; then
+    usage
+    exit 0
+fi
+
+# Validate inputs
+if [[ -z "$SEQUENCES" && -z "$EMBEDDINGS" && -z "$TREE" ]]; then
+    echo "Error: At least one input file must be provided." >&2
+    usage >&2
+    exit 1
+fi
+
+# Check if required files exist
+if [[ -n "$SEQUENCES" && ! -f "$SEQUENCES" ]]; then
+    echo "Error: Sequences file '$SEQUENCES' not found." >&2
+    exit 1
+fi
+
+if [[ -n "$EMBEDDINGS" && ! -f "$EMBEDDINGS" ]]; then
+    echo "Error: Embeddings file '$EMBEDDINGS' not found." >&2
+    exit 1
+fi
+
+if [[ -n "$TREE" && ! -f "$TREE" ]]; then
+    echo "Error: Tree file '$TREE' not found." >&2
+    exit 1
+fi
+
+# Function to check if command exists
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "Error: Required command '$1' not found. Please install it." >&2
+        exit 1
+    fi
+}
+
+# Function to generate embeddings from sequences
+generate_embeddings() {
+    local seq_file="$1"
+    local embed_file="$2"
+    
+    echo "=== Step 1: Generating embeddings from sequences ==="
+    echo "Input sequences: $seq_file"
+    echo "Output embeddings: $embed_file"
+    
+    # Generate embeddings
+    python3 src/embedder.py ${seq_file} ${embed_file}
+}
+
+# Function to generate guide tree from embeddings
+generate_tree() {
+    local embed_file="$1"
+    local tree_file="$2"
+    
+    echo "=== Step 2: Generating guide tree from embeddings ==="
+    echo "Input embeddings: $embed_file"
+    echo "Output tree: $tree_file"
+    
+    # Tree generation
+    python3 src/guide_tree.py ${embed_file} ${tree_file}
+}
+
+# Function to align sequences using guide tree
+align_sequences() {
+    local seq_file="$1"
+    local tree_file="$2"
+    local output_file="$3"
+    
+    echo "=== Step 3: Aligning sequences using guide tree ==="
+    echo "Input sequences: $seq_file"
+    echo "Input tree: $tree_file"
+    echo "Output alignment: $output_file"
+    
+    # Run MAFFT with parttree and custom guide tree
+    echo "Running MAFFT alignment..."
+    $MAFFT_PATH --parttree --treein "$tree_file" "$seq_file" > "$output_file"
+    
+    echo "Alignment completed successfully!"
+    echo "Output saved to: $output_file"
+}
+
+# Main pipeline logic
+echo "MABERT Pipeline Starting..."
+echo "================================"
+
+# Determine starting point based on precedence
+START_POINT=""
+if [[ -n "$TREE" ]]; then
+    START_POINT="tree"
+    echo "Starting from: GUIDE TREE (highest precedence)"
+elif [[ -n "$EMBEDDINGS" ]]; then
+    START_POINT="embeddings"
+    echo "Starting from: EMBEDDINGS"
+elif [[ -n "$SEQUENCES" ]]; then
+    START_POINT="sequences"
+    echo "Starting from: SEQUENCES"
+fi
+
+echo "================================"
+
+# Set up temporary files if needed
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
+
+if [[ "$START_POINT" == "sequences" ]]; then
+    # Generate temporary embeddings file
+    TEMP_EMBEDDINGS="$TEMP_DIR/embeddings.npz"
+    generate_embeddings "$SEQUENCES" "$TEMP_EMBEDDINGS"
+    EMBEDDINGS="$TEMP_EMBEDDINGS"
+fi
+
+if [[ "$START_POINT" == "sequences" || "$START_POINT" == "embeddings" ]]; then
+    # Generate temporary tree file
+    TEMP_TREE="$TEMP_DIR/guide_tree.newick"
+    generate_tree "$EMBEDDINGS" "$TEMP_TREE"
+    TREE="$TEMP_TREE"
+fi
+
+# Final alignment step (always runs)
+if [[ -z "$SEQUENCES" ]]; then
+    echo "Error: Sequences file required for final alignment step." >&2
+    exit 1
+fi
+
+align_sequences "$SEQUENCES" "$TREE" "$OUTPUT"
+
+echo ""
+echo "Pipeline completed successfully!"
+echo "Final output: $OUTPUT"

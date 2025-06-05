@@ -75,6 +75,10 @@ def tree_to_newick(tree, seq_ids):
 if __name__ == "__main__":
     if len(argv) < 2:
         raise ValueError("Please provide the path to the embeddings file as a command line argument.")
+    if len(argv) == 3:
+        output_file = argv[2]
+    else:
+        output_file = None
 
     # Load embeddings
     embeddings_file = argv[1]
@@ -88,7 +92,7 @@ if __name__ == "__main__":
         raise
     
     # Compute and save the guide tree
-    guide_tree_path = compute_tree(embeddings)
+    guide_tree_path = compute_tree(embeddings, output_file)
 
     print(f"Tree saved to {guide_tree_path}")
     
