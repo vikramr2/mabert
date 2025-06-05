@@ -75,8 +75,7 @@ if __name__ == "__main__":
     # Load embeddings
     embeddings_file = argv[1]
     
-    # Load the embeddings - assuming it's a dictionary saved as .npy file
-    # If it's a different format, you may need to adjust this loading
+    # Load .npz embeddings file
     try:
         embeddings = np.load(embeddings_file, allow_pickle=True)
         print(f"Loaded embeddings for {len(embeddings)} sequences")
