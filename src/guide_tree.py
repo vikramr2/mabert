@@ -1,10 +1,9 @@
 import numpy as np
 from sys import argv
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.metrics.pairwise import cosine_distances
+from sklearn.metrics.pairwise import cosine_distances   # type: ignore
 from scipy.cluster.hierarchy import linkage, to_tree
-from scipy.spatial.distance import squareform
-import os
+from scipy.spatial.distance import squareform   # type: ignore
+
 
 def compute_tree(embeddings):
     """
